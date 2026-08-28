@@ -1,0 +1,172 @@
+{
+	"info": {
+		"_postman_id": "b3f1a2a0-6c1e-4e3a-9d3a-2b7c1a9f0a11",
+		"name": "web_bff",
+		"description": "Requests for the Central Dispatch BFF (web_bff). Auth model is bearer pass-through (see docs/adr/0001-bearer-token-passthrough-for-mvp-auth.md): the BFF does not validate the token itself, it forwards whatever Authorization header it receives to CentralDispatch, which is the actual point of validation.\n\nweb_bff has no /auth/login route of its own yet (see .scratch/dispatch-detail-proxy/spec.md, Out of Scope), so the \"Auth (direct to CentralDispatch)\" folder talks to CentralDispatch directly just to obtain a token for testing the BFF's endpoints below it.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{bearerToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "bffBaseUrl",
+			"value": "http://localhost:5066",
+			"type": "string",
+			"description": "BFF.Presentation dev URL (from Properties/launchSettings.json, http profile)"
+		},
+		{
+			"key": "centralDispatchBaseUrl",
+			"value": "http://localhost:5083",
+			"type": "string",
+			"description": "CentralDispatch dev URL (from Presentation/Properties/launchSettings.json, http profile) — used directly only for login, since web_bff doesn't proxy /auth/login yet"
+		},
+		{
+			"key": "bearerToken",
+			"value": "",
+			"type": "string",
+			"description": "Set automatically by the Login request's test script; used as the collection-level Authorization for every other request"
+		},
+		{
+			"key": "dispatchId",
+			"value": "00000000-0000-0000-0000-000000000000",
+			"type": "string",
+			"description": "Replace with a real DispatchId that exists in your dev database"
+		}
+	],
+	"item": [
+		{
+			"name": "Auth (direct to CentralDispatch)",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userName\": \"\",\n  \"password\": \"\"\n}"
+						},
+						"url": {
+							"raw": "{{centralDispatchBaseUrl}}/auth/login",
+							"host": [
+								"{{centralDispatchBaseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "Anonymous endpoint on CentralDispatch (Presentation/Controllers/AuthController.cs). Body shape: LoginRequest(UserName, Password). Response shape: LoginResponse(AccessToken, ExpiresAt)."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const json = pm.response.json();",
+									"if (json.accessToken) {",
+									"    pm.collectionVariables.set(\"bearerToken\", json.accessToken);",
+									"}"
+								]
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Dispatches",
+			"item": [
+				{
+					"name": "Get dispatch by id",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{bffBaseUrl}}/dispatch/{{dispatchId}}",
+							"host": [
+								"{{bffBaseUrl}}"
+							],
+							"path": [
+								"dispatch",
+								"{{dispatchId}}"
+							]
+						},
+						"description": "Proxies to CentralDispatch's GET /dispatch/{id} (BFF.Presentation/Controllers/DispatchesController.cs). 200 with a DispatchDto body if found, 404 if not, 401 relayed unchanged from CentralDispatch if the bearer token is missing/expired/invalid. See .scratch/dispatch-detail-proxy/spec.md."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 200 or 404\", function () {",
+									"    pm.expect([200, 404]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Get dispatch by id - missing token",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{bffBaseUrl}}/dispatch/{{dispatchId}}",
+							"host": [
+								"{{bffBaseUrl}}"
+							],
+							"path": [
+								"dispatch",
+								"{{dispatchId}}"
+							]
+						},
+						"description": "Same route with no Authorization header at all. Per the bearer pass-through auth model (ADR-0001), the BFF does not check for a token itself — it forwards the request to CentralDispatch regardless, which rejects it with 401 because its own JWT-bearer auth requires the header. The BFF relays that 401 back unchanged. This asserts CentralDispatch's [Authorize] is still the actual enforcement point, not the BFF."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 401 when no bearer token is sent\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		}
+	]
+}
