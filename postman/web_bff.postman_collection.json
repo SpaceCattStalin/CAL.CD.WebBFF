@@ -38,7 +38,19 @@
 			"key": "dispatchId",
 			"value": "00000000-0000-0000-0000-000000000000",
 			"type": "string",
-			"description": "Replace with a real DispatchId that exists in your dev database"
+			"description": "Replace with a real DispatchId, or run \"Create dispatch\" first — its test script sets this automatically from the response"
+		},
+		{
+			"key": "carrierId",
+			"value": "00000000-0000-0000-0000-000000000000",
+			"type": "string",
+			"description": "Replace with a real Carrier's CompanyId (CompanyType = Carrier) from your dev database — required by Create"
+		},
+		{
+			"key": "vehicleId",
+			"value": "00000000-0000-0000-0000-000000000000",
+			"type": "string",
+			"description": "Replace with a real VehicleId from a Create/Get response's vehicles array — required by Update to keep an existing vehicle"
 		}
 	],
 	"item": [
@@ -150,6 +162,265 @@
 							]
 						},
 						"description": "Same route with no Authorization header at all. Per the bearer pass-through auth model (ADR-0001), the BFF does not check for a token itself — it forwards the request to CentralDispatch regardless, which rejects it with 401 because its own JWT-bearer auth requires the header. The BFF relays that 401 back unchanged. This asserts CentralDispatch's [Authorize] is still the actual enforcement point, not the BFF."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 401 when no bearer token is sent\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Create dispatch",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"carrierId\": \"{{carrierId}}\",\n  \"price\": 1500.00,\n  \"pickupDate\": \"2026-09-15T08:00:00Z\",\n  \"dropoffDate\": \"2026-09-20T17:00:00Z\",\n  \"description\": \"Postman test dispatch\",\n  \"pickupStop\": {\n    \"address\": \"123 Industrial Pkwy, Dallas, TX\",\n    \"locationName\": \"Dallas Yard\",\n    \"contactName\": \"Sam Rivera\",\n    \"contactPhone\": \"214-555-0142\",\n    \"contactEmail\": \"sam.rivera@example.com\"\n  },\n  \"dropoffStop\": {\n    \"address\": \"88 Harbor Rd, Long Beach, CA\",\n    \"locationName\": \"Long Beach Terminal\",\n    \"contactName\": \"Priya Nair\",\n    \"contactPhone\": \"562-555-0199\",\n    \"contactEmail\": \"priya.nair@example.com\"\n  },\n  \"vehicles\": [\n    {\n      \"vin\": \"1HGCM82633A004352\",\n      \"year\": 2023,\n      \"make\": \"Honda\",\n      \"model\": \"Accord\",\n      \"color\": \"Silver\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{bffBaseUrl}}/dispatch",
+							"host": [
+								"{{bffBaseUrl}}"
+							],
+							"path": [
+								"dispatch"
+							]
+						},
+						"description": "Proxies to CentralDispatch's POST /dispatch. Requires a real {{carrierId}}. On 201, the test script captures the new DispatchId into the {{dispatchId}} collection variable so Get/Update requests below can chain off it."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"if (pm.response.code === 201) {",
+									"    const json = pm.response.json();",
+									"    pm.collectionVariables.set(\"dispatchId\", json.dispatchId);",
+									"}"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Create dispatch - validation error",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"carrierId\": \"{{carrierId}}\",\n  \"price\": -1,\n  \"pickupDate\": \"2026-09-15T08:00:00Z\",\n  \"dropoffDate\": \"2026-09-10T17:00:00Z\",\n  \"description\": \"Intentionally invalid \\u2014 negative price, dropoff before pickup, no vehicles\",\n  \"pickupStop\": {\n    \"address\": \"123 Industrial Pkwy, Dallas, TX\",\n    \"locationName\": null,\n    \"contactName\": null,\n    \"contactPhone\": null,\n    \"contactEmail\": null\n  },\n  \"dropoffStop\": {\n    \"address\": \"88 Harbor Rd, Long Beach, CA\",\n    \"locationName\": null,\n    \"contactName\": null,\n    \"contactPhone\": null,\n    \"contactEmail\": null\n  },\n  \"vehicles\": []\n}"
+						},
+						"url": {
+							"raw": "{{bffBaseUrl}}/dispatch",
+							"host": [
+								"{{bffBaseUrl}}"
+							],
+							"path": [
+								"dispatch"
+							]
+						},
+						"description": "Trips several CreateDispatchRequestValidator rules at once (Price > 0, DropoffDate > PickupDate, 1–12 Vehicles). Demonstrates relay-verbatim on error: the BFF forwards CentralDispatch's ValidationProblemDetails body and 400 status unchanged via DownstreamResponse, instead of reshaping or 500ing."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Body is a ValidationProblemDetails shape\", function () {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json).to.have.property(\"errors\");",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Create dispatch - missing token",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"carrierId\": \"{{carrierId}}\",\n  \"price\": 1500.00,\n  \"pickupDate\": \"2026-09-15T08:00:00Z\",\n  \"dropoffDate\": \"2026-09-20T17:00:00Z\",\n  \"description\": \"Postman test dispatch\",\n  \"pickupStop\": {\n    \"address\": \"123 Industrial Pkwy, Dallas, TX\",\n    \"locationName\": null,\n    \"contactName\": null,\n    \"contactPhone\": null,\n    \"contactEmail\": null\n  },\n  \"dropoffStop\": {\n    \"address\": \"88 Harbor Rd, Long Beach, CA\",\n    \"locationName\": null,\n    \"contactName\": null,\n    \"contactPhone\": null,\n    \"contactEmail\": null\n  },\n  \"vehicles\": [\n    {\n      \"vin\": \"1HGCM82633A004352\",\n      \"year\": 2023,\n      \"make\": \"Honda\",\n      \"model\": \"Accord\",\n      \"color\": \"Silver\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{bffBaseUrl}}/dispatch",
+							"host": [
+								"{{bffBaseUrl}}"
+							],
+							"path": [
+								"dispatch"
+							]
+						},
+						"description": "No Authorization header. The BFF forwards to CentralDispatch regardless and relays its 401 unchanged, same as GET's missing-token case."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 401 when no bearer token is sent\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Update dispatch",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"price\": 1600.00,\n  \"pickupDate\": \"2026-09-16T08:00:00Z\",\n  \"dropoffDate\": \"2026-09-21T17:00:00Z\",\n  \"description\": \"Postman test dispatch \\u2014 updated\",\n  \"pickupStop\": {\n    \"address\": \"123 Industrial Pkwy, Dallas, TX\",\n    \"locationName\": \"Dallas Yard\",\n    \"contactName\": \"Sam Rivera\",\n    \"contactPhone\": \"214-555-0142\",\n    \"contactEmail\": \"sam.rivera@example.com\"\n  },\n  \"dropoffStop\": {\n    \"address\": \"88 Harbor Rd, Long Beach, CA\",\n    \"locationName\": \"Long Beach Terminal\",\n    \"contactName\": \"Priya Nair\",\n    \"contactPhone\": \"562-555-0199\",\n    \"contactEmail\": \"priya.nair@example.com\"\n  },\n  \"vehicles\": [\n    {\n      \"vehicleId\": \"{{vehicleId}}\",\n      \"vin\": \"1HGCM82633A004352\",\n      \"year\": 2023,\n      \"make\": \"Honda\",\n      \"model\": \"Accord\",\n      \"color\": \"Blue\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{bffBaseUrl}}/dispatch/{{dispatchId}}",
+							"host": [
+								"{{bffBaseUrl}}"
+							],
+							"path": [
+								"dispatch",
+								"{{dispatchId}}"
+							]
+						},
+						"description": "Proxies to CentralDispatch's PUT /dispatch/{id}. No carrierId field — the Carrier is fixed at creation. Requires a real {{vehicleId}} to keep the existing vehicle; use a fresh Guid there instead to add a new one, per UpdateDispatchRequestValidator's \"new vehicle\" rules — the BFF doesn't interpret this, only forwards it."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Update dispatch - not found",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"price\": 1600.00,\n  \"pickupDate\": \"2026-09-16T08:00:00Z\",\n  \"dropoffDate\": \"2026-09-21T17:00:00Z\",\n  \"description\": \"Update against a DispatchId that does not exist\",\n  \"pickupStop\": {\n    \"address\": \"123 Industrial Pkwy, Dallas, TX\",\n    \"locationName\": null,\n    \"contactName\": null,\n    \"contactPhone\": null,\n    \"contactEmail\": null\n  },\n  \"dropoffStop\": {\n    \"address\": \"88 Harbor Rd, Long Beach, CA\",\n    \"locationName\": null,\n    \"contactName\": null,\n    \"contactPhone\": null,\n    \"contactEmail\": null\n  },\n  \"vehicles\": [\n    {\n      \"vehicleId\": \"{{vehicleId}}\",\n      \"vin\": \"1HGCM82633A004352\",\n      \"year\": 2023,\n      \"make\": \"Honda\",\n      \"model\": \"Accord\",\n      \"color\": \"Blue\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{bffBaseUrl}}/dispatch/00000000-0000-0000-0000-000000000999",
+							"host": [
+								"{{bffBaseUrl}}"
+							],
+							"path": [
+								"dispatch",
+								"00000000-0000-0000-0000-000000000999"
+							]
+						},
+						"description": "A DispatchId that (almost certainly) doesn't exist. Demonstrates relay-verbatim on 404: the BFF forwards CentralDispatch's actual 404 body instead of a bare NotFound()."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Update dispatch - missing token",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"price\": 1600.00,\n  \"pickupDate\": \"2026-09-16T08:00:00Z\",\n  \"dropoffDate\": \"2026-09-21T17:00:00Z\",\n  \"description\": \"Postman test dispatch \\u2014 updated\",\n  \"pickupStop\": {\n    \"address\": \"123 Industrial Pkwy, Dallas, TX\",\n    \"locationName\": null,\n    \"contactName\": null,\n    \"contactPhone\": null,\n    \"contactEmail\": null\n  },\n  \"dropoffStop\": {\n    \"address\": \"88 Harbor Rd, Long Beach, CA\",\n    \"locationName\": null,\n    \"contactName\": null,\n    \"contactPhone\": null,\n    \"contactEmail\": null\n  },\n  \"vehicles\": [\n    {\n      \"vehicleId\": \"{{vehicleId}}\",\n      \"vin\": \"1HGCM82633A004352\",\n      \"year\": 2023,\n      \"make\": \"Honda\",\n      \"model\": \"Accord\",\n      \"color\": \"Blue\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{bffBaseUrl}}/dispatch/{{dispatchId}}",
+							"host": [
+								"{{bffBaseUrl}}"
+							],
+							"path": [
+								"dispatch",
+								"{{dispatchId}}"
+							]
+						},
+						"description": "No Authorization header. The BFF forwards to CentralDispatch regardless and relays its 401 unchanged, same as GET's missing-token case."
 					},
 					"event": [
 						{

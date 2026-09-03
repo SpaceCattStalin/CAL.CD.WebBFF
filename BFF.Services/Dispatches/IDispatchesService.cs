@@ -4,5 +4,7 @@ namespace BFF.Services.Dispatches;
 
 public interface IDispatchesService
 {
-    Task<DispatchResponse?> GetByIdAsync(Guid dispatchId, CancellationToken cancellationToken = default);
+    Task<DownstreamResponse> GetByIdAsync(Guid dispatchId, CancellationToken cancellationToken = default);
+    Task<DownstreamResponse> CreateAsync(CreateDispatchRequest request, CancellationToken cancellationToken = default);
+    Task<DownstreamResponse> UpdateAsync(Guid dispatchId, UpdateDispatchRequest request, CancellationToken cancellationToken = default);
 }
