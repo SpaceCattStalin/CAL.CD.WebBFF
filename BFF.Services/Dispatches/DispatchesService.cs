@@ -1,8 +1,9 @@
 using BFF.Client.Dispatches;
+using BFF.Client.SearchService;
 
 namespace BFF.Services.Dispatches;
 
-public class DispatchesService(IDispatchServiceClient dispatchServiceClient) : IDispatchesService
+public class DispatchesService(IDispatchServiceClient dispatchServiceClient, ISearchServiceClient searchServiceClient) : IDispatchesService
 {
     public Task<DownstreamResponse> GetByIdAsync(Guid dispatchId, CancellationToken cancellationToken = default)
     {
@@ -15,5 +16,9 @@ public class DispatchesService(IDispatchServiceClient dispatchServiceClient) : I
     public Task<DownstreamResponse> UpdateAsync(Guid dispatchId, UpdateDispatchRequest request, CancellationToken cancellationToken = default)
     {
         return dispatchServiceClient.UpdateDispatchAsync(dispatchId, request, cancellationToken);
+    }
+    public Task<DownstreamResponse> SearchAsync(DispatchSearchRequestModel request, CancellationToken cancellationToken = default)
+    {
+        return searchServiceClient.SearchAsync(request, cancellationToken);
     }
 }

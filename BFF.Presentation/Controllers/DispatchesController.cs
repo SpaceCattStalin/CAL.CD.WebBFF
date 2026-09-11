@@ -28,7 +28,7 @@ public class DispatchesController(IDispatchesService dispatchesService) : Contro
             return Relay(response);
         }
 
-        var dispatch = Deserialize(response);
+        var dispatch = Deserialize<DispatchResponse>(response);
         return Created($"/dispatch/{dispatch.DispatchId}", dispatch);
     }
 
@@ -36,17 +36,29 @@ public class DispatchesController(IDispatchesService dispatchesService) : Contro
     public async Task<IActionResult> Update(Guid dispatchId, UpdateDispatchRequest request, CancellationToken cancellationToken)
     {
         var response = await dispatchesService.UpdateAsync(dispatchId, request, cancellationToken);
-        return ToActionResult(response);
+        return ToActionResult<DispatchResponse>(response);
     }
 
-    private static IActionResult ToActionResult(DownstreamResponse response)
+    [HttpPost("search")]
+    public async Task<IActionResult> Search([FromBody] DispatchSearchRequestModel request, CancellationToken cancellationToken)
+    {
+        var response = await dispatchesService.SearchAsync(request, cancellationToken);
+        
+        Console.WriteLine(response.RawBody);
+
+        return ToActionResult<GetDispatchBatchResponse>(response);
+    }
+
+    private static IActionResult ToActionResult(DownstreamResponse response) => ToActionResult<DispatchResponse>(response);
+
+    private static IActionResult ToActionResult<T>(DownstreamResponse response)
     {
         if (!response.IsSuccessStatusCode)
         {
             return Relay(response);
         }
 
-        return new ObjectResult(Deserialize(response)) { StatusCode = response.StatusCode };
+        return new ObjectResult(Deserialize<T>(response)) { StatusCode = response.StatusCode };
     }
 
     private static ContentResult Relay(DownstreamResponse response) => new()
@@ -56,7 +68,7 @@ public class DispatchesController(IDispatchesService dispatchesService) : Contro
         ContentType = response.ContentType
     };
 
-    private static DispatchResponse Deserialize(DownstreamResponse response) =>
-        JsonSerializer.Deserialize<DispatchResponse>(response.RawBody, JsonOptions)
+    private static T Deserialize<T>(DownstreamResponse response) =>
+        JsonSerializer.Deserialize<T>(response.RawBody, JsonOptions)
             ?? throw new InvalidOperationException("CentralDispatch returned an empty success body.");
 }

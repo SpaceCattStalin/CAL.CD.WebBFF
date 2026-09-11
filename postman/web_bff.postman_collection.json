@@ -436,6 +436,99 @@
 						}
 					],
 					"response": []
+				},
+				{
+					"name": "Search dispatches",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{bffBaseUrl}}/dispatch/search?dispatchStatus=Pending&size=50",
+							"host": [
+								"{{bffBaseUrl}}"
+							],
+							"path": [
+								"dispatch",
+								"search"
+							],
+							"query": [
+								{
+									"key": "dispatchStatus",
+									"value": "Pending"
+								},
+								{
+									"key": "size",
+									"value": "50"
+								}
+							]
+						},
+						"description": "Proxies to SearchService's POST /api/dispatch/search (BFF.Presentation/Controllers/DispatchesController.cs), which validates the query filters, searches its index, then batch-fetches the matching records from CentralDispatch via SearchService's ICentralDispatchClient. Query params bind to DispatchSearchRequestModel (PriceTotalMin/Max, PickupDateFrom/To, DropoffDateFrom/To, DispatchStatus, VehicleVin, Size). Response shape: GetDispatchBatchResponse(Found, NotFound)."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Body has found and notFound arrays\", function () {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json).to.have.property(\"found\");",
+									"    pm.expect(json).to.have.property(\"notFound\");",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Search dispatches - missing token",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{bffBaseUrl}}/dispatch/search?dispatchStatus=Pending&size=50",
+							"host": [
+								"{{bffBaseUrl}}"
+							],
+							"path": [
+								"dispatch",
+								"search"
+							],
+							"query": [
+								{
+									"key": "dispatchStatus",
+									"value": "Pending"
+								},
+								{
+									"key": "size",
+									"value": "50"
+								}
+							]
+						},
+						"description": "No Authorization header. The BFF forwards to SearchService regardless and relays its 401 unchanged, same as the other missing-token cases."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 401 when no bearer token is sent\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
 				}
 			]
 		}
