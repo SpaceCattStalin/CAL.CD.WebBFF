@@ -47,6 +47,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
             var (status, title) = exception switch
             {
                 HttpRequestException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
+                UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
                 _ => (StatusCodes.Status500InternalServerError, "Server Error")
             };
 
@@ -66,6 +67,8 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
 
         problem.Extensions["traceId"] = httpContext.TraceIdentifier;
         problem.Extensions["timestamp"] = DateTime.UtcNow;
+       
+        httpContext.Response.StatusCode = problem.Status ?? StatusCodes.Status500InternalServerError;
 
         await _problemDetails.WriteAsync(new ProblemDetailsContext
         {

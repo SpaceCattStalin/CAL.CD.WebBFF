@@ -1,7 +1,7 @@
 ﻿namespace WebBFF;
 
 /// <summary>
-/// Outware middleware configuration for Http request from this server
+/// Outward middleware configuration for Http request from this server
 /// </summary>
 /// <param name="httpContextAccessor">To access the HttpContext</param>
 /// <param name="logger"></param>
