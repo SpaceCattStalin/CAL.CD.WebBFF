@@ -9,8 +9,9 @@ public class SearchServiceClient(HttpClient httpClient) : ISearchServiceClient
     public async Task<DownstreamResponse> SearchAsync(DispatchSearchRequestModel request, CancellationToken cancellationToken = default)
     {
         var body = JsonContent.Create(request);
-        
+
         var response = await httpClient.PostAsync($"api/dispatch/search", body, cancellationToken);
+        
         return await ToDownstreamResponseAsync(response, cancellationToken);
     }
 

@@ -1,5 +1,7 @@
+using BFF.Client.Companies;
 using BFF.Client.Dispatches;
 using BFF.Client.SearchService;
+using BFF.Services.Companies;
 using BFF.Services.Dispatches;
 using WebBFF;
 
@@ -39,7 +41,18 @@ builder.Services.AddHttpClient<ISearchServiceClient, SearchServiceClient>(client
 // forward the bearer token to outward Http request
 .AddHttpMessageHandler<BearerTokenForwardingHandler>();
 
+// Register a typed client for CentralDispatch's Company endpoints
+builder.Services.AddHttpClient<ICompanyServiceClient, CompanyServiceClient>(client =>
+{
+    var baseUrl = builder.Configuration["DownstreamServices:CentralDispatch:BaseUrl"]
+        ?? throw new InvalidOperationException("Missing configuration: DownstreamServices:CentralDispatch:BaseUrl");
+    client.BaseAddress = new Uri(baseUrl);
+})
+// forward the bearer token to outward Http request
+.AddHttpMessageHandler<BearerTokenForwardingHandler>();
+
 builder.Services.AddScoped<IDispatchesService, DispatchesService>();
+builder.Services.AddScoped<ICompaniesService, CompaniesService>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

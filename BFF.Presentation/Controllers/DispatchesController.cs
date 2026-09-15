@@ -43,12 +43,16 @@ public class DispatchesController(IDispatchesService dispatchesService) : Contro
     public async Task<IActionResult> Search([FromBody] DispatchSearchRequestModel request, CancellationToken cancellationToken)
     {
         var response = await dispatchesService.SearchAsync(request, cancellationToken);
-        
         Console.WriteLine(response.RawBody);
-
         return ToActionResult<GetDispatchBatchResponse>(response);
     }
 
+
+    /// <summary>
+    /// Deserialize every response shape to <see cref="DispatchResponse">
+    /// </summary>
+    /// <param name="response"></param>
+    /// <returns></returns>
     private static IActionResult ToActionResult(DownstreamResponse response) => ToActionResult<DispatchResponse>(response);
 
     private static IActionResult ToActionResult<T>(DownstreamResponse response)
