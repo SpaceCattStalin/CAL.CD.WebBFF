@@ -12,4 +12,11 @@ public class DispatchSearchRequestModel
     public string? VehicleVin { get; set; }
     public int? Size { get; set; } = 50;
     public int? CurrentPage { get; set; } = 0;
+    public ICollection<SortFieldRequest> SortFields { get; set; } = [];
+}
+
+public class SortFieldRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Direction { get; set; } = string.Empty;
 }

@@ -36,6 +36,12 @@ public class DispatchesController(IDispatchesService dispatchesService) : Contro
     public async Task<IActionResult> Update(Guid dispatchId, UpdateDispatchRequest request, CancellationToken cancellationToken)
     {
         var response = await dispatchesService.UpdateAsync(dispatchId, request, cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Response.Headers.Location = $"/dispatch/{dispatchId}";
+        }
+
         return ToActionResult<DispatchResponse>(response);
     }
 
