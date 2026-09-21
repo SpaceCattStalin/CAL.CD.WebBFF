@@ -12,6 +12,9 @@ public class DispatchResponse(
     bool IsSigned,
     StopResponse? PickupStop,
     StopResponse? DropoffStop,
+    string? CarrierCompanyName,
+    string? CarrierCompanyPhone,
+    string? CarrierCompanyEmail,
     IEnumerable<VehicleResponse> Vehicles,
     IEnumerable<DriverResponse> Drivers,
     DateTime CreatedAt)
@@ -30,5 +33,8 @@ public class DispatchResponse(
     public IEnumerable<VehicleResponse> Vehicles { get; init; } = Vehicles;
     public IEnumerable<DriverResponse> Drivers { get; init; } = Drivers;
     public DateTime CreatedAt { get; init; } = CreatedAt;
+    public string? CarrierCompanyName { get; init; } = CarrierCompanyName;
+    public string? CarrierCompanyPhone { get; init; } = CarrierCompanyPhone;
+    public string? CarrierCompanyEmail { get; init; } = CarrierCompanyEmail;
 }
 
