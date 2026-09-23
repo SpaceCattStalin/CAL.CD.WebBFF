@@ -36,7 +36,27 @@ public class DispatchesController(IDispatchesService dispatchesService) : Contro
     public async Task<IActionResult> Update(Guid dispatchId, UpdateDispatchRequest request, CancellationToken cancellationToken)
     {
         var response = await dispatchesService.UpdateAsync(dispatchId, request, cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Response.Headers.Location = $"/dispatch/{dispatchId}";
+        }
+
         return ToActionResult<DispatchResponse>(response);
+    }
+
+    [HttpPut("{dispatchId:guid}/accept")]
+    public async Task<IActionResult> Accept(Guid dispatchId, CancellationToken cancellationToken)
+    {
+        var response = await dispatchesService.AcceptAsync(dispatchId, cancellationToken);
+        return response.IsSuccessStatusCode ? NoContent() : Relay(response);
+    }
+
+    [HttpPost("{dispatchId:guid}/assign-driver")]
+    public async Task<IActionResult> AssignDriver(Guid dispatchId, AssignDriverRequest request, CancellationToken cancellationToken)
+    {
+        var response = await dispatchesService.AssignDriverAsync(dispatchId, request, cancellationToken);
+        return response.IsSuccessStatusCode ? NoContent() : Relay(response);
     }
 
     [HttpPost("search")]

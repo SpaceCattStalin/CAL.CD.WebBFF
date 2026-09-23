@@ -19,6 +19,13 @@ public class CompaniesController(ICompaniesService companiesService) : Controlle
         return ToActionResult<IEnumerable<CarrierResponse>>(response);
     }
 
+    [HttpGet("drivers")]
+    public async Task<IActionResult> GetDrivers(CancellationToken cancellationToken)
+    {
+        var response = await companiesService.GetDriversAsync(cancellationToken);
+        return ToActionResult<IEnumerable<DriverResponse>>(response);
+    }
+
     private static IActionResult ToActionResult<T>(DownstreamResponse response)
     {
         if (!response.IsSuccessStatusCode)

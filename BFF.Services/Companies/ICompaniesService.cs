@@ -5,4 +5,5 @@ namespace BFF.Services.Companies;
 public interface ICompaniesService
 {
     Task<DownstreamResponse> GetCarriersAsync(CancellationToken cancellationToken = default);
+    Task<DownstreamResponse> GetDriversAsync(CancellationToken cancellationToken = default);
 }

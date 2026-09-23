@@ -10,6 +10,12 @@ public class CompanyServiceClient(HttpClient httpClient) : ICompanyServiceClient
         return await ToDownstreamResponseAsync(response, cancellationToken);
     }
 
+    public async Task<DownstreamResponse> GetDriversAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.GetAsync("api/company/drivers", cancellationToken);
+        return await ToDownstreamResponseAsync(response, cancellationToken);
+    }
+
     private static async Task<DownstreamResponse> ToDownstreamResponseAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var rawBody = await response.Content.ReadAsStringAsync(cancellationToken);

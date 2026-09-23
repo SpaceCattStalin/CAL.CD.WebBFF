@@ -9,4 +9,8 @@ public class CompaniesService(ICompanyServiceClient companyServiceClient) : ICom
     {
         return companyServiceClient.GetCarriersAsync(cancellationToken);
     }
+    public Task<DownstreamResponse> GetDriversAsync(CancellationToken cancellationToken = default)
+    {
+        return companyServiceClient.GetDriversAsync(cancellationToken);
+    }
 }
