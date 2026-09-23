@@ -22,6 +22,18 @@ public class DispatchServiceClient(HttpClient httpClient) : IDispatchServiceClie
         return await ToDownstreamResponseAsync(response, cancellationToken);
     }
 
+    public async Task<DownstreamResponse> AcceptDispatchAsync(Guid dispatchId, CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.PutAsync($"api/dispatch/{dispatchId}/accept", null, cancellationToken);
+        return await ToDownstreamResponseAsync(response, cancellationToken);
+    }
+
+    public async Task<DownstreamResponse> AssignDriverAsync(Guid dispatchId, AssignDriverRequest request, CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.PostAsJsonAsync($"api/dispatch/{dispatchId}/assign-driver", request, cancellationToken);
+        return await ToDownstreamResponseAsync(response, cancellationToken);
+    }
+
     private static async Task<DownstreamResponse> ToDownstreamResponseAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var rawBody = await response.Content.ReadAsStringAsync(cancellationToken);

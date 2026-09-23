@@ -17,6 +17,14 @@ public class DispatchesService(IDispatchServiceClient dispatchServiceClient, ISe
     {
         return dispatchServiceClient.UpdateDispatchAsync(dispatchId, request, cancellationToken);
     }
+    public Task<DownstreamResponse> AcceptAsync(Guid dispatchId, CancellationToken cancellationToken = default)
+    {
+        return dispatchServiceClient.AcceptDispatchAsync(dispatchId, cancellationToken);
+    }
+    public Task<DownstreamResponse> AssignDriverAsync(Guid dispatchId, AssignDriverRequest request, CancellationToken cancellationToken = default)
+    {
+        return dispatchServiceClient.AssignDriverAsync(dispatchId, request, cancellationToken);
+    }
     public Task<DownstreamResponse> SearchAsync(DispatchSearchRequestModel request, CancellationToken cancellationToken = default)
     {
         return searchServiceClient.SearchAsync(request, cancellationToken);
